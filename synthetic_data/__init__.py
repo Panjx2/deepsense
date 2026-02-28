@@ -9,12 +9,21 @@ from .eda import (
     compute_column_profiles,
     compute_summary,
 )
-from .generators import DATASET_TYPES, generate_dataset, get_dataset_parameters
+from .generators import (
+    CHURN_LOGIT_FORMULA,
+    DATASET_TYPES,
+    estimate_expected_churn_rate,
+    generate_dataset,
+    get_dataset_parameters,
+)
+from .quality import compute_distribution_distance, summarize_quality, validate_schema
 
 __all__ = [
     "DATASET_TYPES",
+    "CHURN_LOGIT_FORMULA",
     "generate_dataset",
     "get_dataset_parameters",
+    "estimate_expected_churn_rate",
     "compute_summary",
     "compute_column_profiles",
     "build_numeric_distributions",
@@ -22,4 +31,7 @@ __all__ = [
     "build_target_breakdown",
     "build_time_trend",
     "build_scatter_matrix",
+    "validate_schema",
+    "summarize_quality",
+    "compute_distribution_distance",
 ]

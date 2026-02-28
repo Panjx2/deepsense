@@ -16,6 +16,12 @@ class DatasetType:
     methods: tuple[str, ...]
 
 
+CHURN_LOGIT_FORMULA = (
+    "logit = 1.2 + price_sensitivity*monthly_charges + 0.35*support_tickets "
+    "- 0.03*tenure_months + 1.0*I(contract=month-to-month) - 0.7*I(contract=two-year) - 4"
+)
+
+
 DATASET_TYPES = {
     "customer_churn": DatasetType(
         key="customer_churn",
@@ -67,13 +73,39 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-x))
 
 
-def _generate_customer_churn(rows: int, seed: int, method: str, **kwargs: Any) -> pd.DataFrame:
-    rng = np.random.default_rng(seed)
-    monthly_charge_mean = float(kwargs.get("monthly_charge_mean", 75.0))
-    ticket_intensity = float(kwargs.get("ticket_intensity", 1.8))
-    monthly_contract_share = float(kwargs.get("monthly_contract_share", 0.55))
-    price_sensitivity = float(kwargs.get("price_sensitivity", 0.02))
+def _sample_contracts(rng: np.random.Generator, rows: int, monthly_contract_share: float) -> np.ndarray:
+    remaining = max(1.0 - monthly_contract_share, 1e-6)
+    one_year = remaining * 0.56
+    two_year = remaining * 0.44
+    return rng.choice(["month-to-month", "one-year", "two-year"], p=[monthly_contract_share, one_year, two_year], size=rows)
 
+
+def _sample_payment_method_conditional(rng: np.random.Generator, contract: np.ndarray) -> np.ndarray:
+    payment = np.empty(contract.shape[0], dtype=object)
+    probs_by_contract = {
+        "month-to-month": [0.30, 0.25, 0.45],
+        "one-year": [0.52, 0.36, 0.12],
+        "two-year": [0.60, 0.32, 0.08],
+    }
+    options = ["credit-card", "bank-transfer", "e-wallet"]
+    for c in probs_by_contract:
+        idx = np.where(contract == c)[0]
+        if len(idx):
+            payment[idx] = rng.choice(options, p=probs_by_contract[c], size=len(idx))
+    return payment
+
+
+def _sample_tickets_with_tenure_dependence(rng: np.random.Generator, tenure_months: np.ndarray, base_intensity: float) -> np.ndarray:
+    intensity = np.where(
+        tenure_months < 12,
+        base_intensity * 1.35,
+        np.where(tenure_months < 36, base_intensity * 1.0, base_intensity * 0.7),
+    )
+    return rng.poisson(intensity)
+
+
+def _build_churn_features(rows: int, seed: int, method: str, monthly_charge_mean: float, ticket_intensity: float, monthly_contract_share: float) -> dict[str, np.ndarray]:
+    rng = np.random.default_rng(seed)
     if method == "distribution_based":
         tenure_months = rng.gamma(shape=2.5, scale=12.0, size=rows).clip(1, 72).round().astype(int)
         monthly_charges = rng.lognormal(mean=np.log(max(monthly_charge_mean, 1.0)), sigma=0.25, size=rows).clip(15, 180)
@@ -81,30 +113,64 @@ def _generate_customer_churn(rows: int, seed: int, method: str, **kwargs: Any) -
         tenure_months = rng.integers(1, 72, rows)
         monthly_charges = rng.normal(monthly_charge_mean, 28, rows).clip(15, 180)
 
-    support_tickets = rng.poisson(ticket_intensity, rows)
-    remaining = max(1.0 - monthly_contract_share, 1e-6)
-    one_year = remaining * 0.56
-    two_year = remaining * 0.44
-    contract = rng.choice(["month-to-month", "one-year", "two-year"], p=[monthly_contract_share, one_year, two_year], size=rows)
-    payment_method = rng.choice(["credit-card", "bank-transfer", "e-wallet"], p=[0.45, 0.35, 0.20], size=rows)
+    support_tickets = _sample_tickets_with_tenure_dependence(rng, tenure_months, ticket_intensity)
+    contract = _sample_contracts(rng, rows, monthly_contract_share)
+    payment_method = _sample_payment_method_conditional(rng, contract)
+
+    return {
+        "tenure_months": tenure_months,
+        "monthly_charges": monthly_charges,
+        "support_tickets": support_tickets,
+        "contract": contract,
+        "payment_method": payment_method,
+    }
+
+
+def estimate_expected_churn_rate(rows: int = 6000, seed: int = 42, method: str = "rule_based", **kwargs: Any) -> float:
+    monthly_charge_mean = float(kwargs.get("monthly_charge_mean", 75.0))
+    ticket_intensity = float(kwargs.get("ticket_intensity", 1.8))
+    monthly_contract_share = float(kwargs.get("monthly_contract_share", 0.55))
+    price_sensitivity = float(kwargs.get("price_sensitivity", 0.02))
+
+    feats = _build_churn_features(rows, seed, method, monthly_charge_mean, ticket_intensity, monthly_contract_share)
+    logit = (
+        1.2
+        + price_sensitivity * feats["monthly_charges"]
+        + 0.35 * feats["support_tickets"]
+        - 0.03 * feats["tenure_months"]
+        + 1.0 * (feats["contract"] == "month-to-month")
+        - 0.7 * (feats["contract"] == "two-year")
+    )
+    probs = _sigmoid(logit - 4)
+    return float(np.mean(probs))
+
+
+def _generate_customer_churn(rows: int, seed: int, method: str, **kwargs: Any) -> pd.DataFrame:
+    monthly_charge_mean = float(kwargs.get("monthly_charge_mean", 75.0))
+    ticket_intensity = float(kwargs.get("ticket_intensity", 1.8))
+    monthly_contract_share = float(kwargs.get("monthly_contract_share", 0.55))
+    price_sensitivity = float(kwargs.get("price_sensitivity", 0.02))
+
+    feats = _build_churn_features(rows, seed, method, monthly_charge_mean, ticket_intensity, monthly_contract_share)
 
     logit = (
         1.2
-        + price_sensitivity * monthly_charges
-        + 0.35 * support_tickets
-        - 0.03 * tenure_months
-        + 1.0 * (contract == "month-to-month")
-        - 0.7 * (contract == "two-year")
+        + price_sensitivity * feats["monthly_charges"]
+        + 0.35 * feats["support_tickets"]
+        - 0.03 * feats["tenure_months"]
+        + 1.0 * (feats["contract"] == "month-to-month")
+        - 0.7 * (feats["contract"] == "two-year")
     )
-    churn = rng.binomial(1, _sigmoid(logit - 4))
+    churn_probability = _sigmoid(logit - 4)
+    churn = np.random.default_rng(seed + 1).binomial(1, churn_probability)
 
     return pd.DataFrame(
         {
-            "tenure_months": tenure_months,
-            "monthly_charges": monthly_charges.round(2),
-            "support_tickets": support_tickets,
-            "contract": contract,
-            "payment_method": payment_method,
+            "tenure_months": feats["tenure_months"],
+            "monthly_charges": feats["monthly_charges"].round(2),
+            "support_tickets": feats["support_tickets"],
+            "contract": feats["contract"],
+            "payment_method": feats["payment_method"],
             "churn": churn,
         }
     )
