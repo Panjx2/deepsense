@@ -103,6 +103,19 @@ tests/test_generators.py
 
 ---
 
+
+
+## Sensitivity simulation lab (retail)
+
+A separate mini-project lives under `sensitivity_lab/` for parameter sensitivity analysis on retail data generation.
+It supports grid sweeps over `discount_cap`, `avg_units`, `ad_spend_scale`, and `weekend_lift`, and outputs both metrics and an HTML visualization.
+
+Run example:
+
+```bash
+python -m sensitivity_lab.run_sweep --parameter discount_cap --start 0.1 --stop 0.7 --steps 10
+```
+
 ## Installation
 
 ### Prerequisites
