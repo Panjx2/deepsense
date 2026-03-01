@@ -27,3 +27,14 @@ Outputs are written to `sensitivity_lab/output/` as:
 
 - `<parameter>_sweep.csv`
 - `<parameter>_sweep.html`
+
+
+You can run it either from the repository root or from inside `sensitivity_lab/`:
+
+```bash
+# from repo root
+python -m sensitivity_lab.run_sweep --parameter discount_cap --start 0.1 --stop 0.7 --steps 10
+
+# from sensitivity_lab/ directory
+python -m sensitivity_lab.run_sweep --parameter discount_cap --start 0.1 --stop 0.7 --steps 10
+```

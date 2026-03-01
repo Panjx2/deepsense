@@ -1,6 +1,5 @@
-"""Parameter sensitivity simulation lab for DeepSense retail sales generation."""
+"""Compatibility exports for repository-root imports."""
 
-from .engine import SweepResult, run_parameter_sweep
-from .visualization import build_sensitivity_figure
+from .sensitivity_lab import SweepResult, build_sensitivity_figure, run_parameter_sweep
 
 __all__ = ["SweepResult", "run_parameter_sweep", "build_sensitivity_figure"]
