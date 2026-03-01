@@ -1,14 +1,12 @@
-# DeepSense — Synthetic Data Studio
+# Data Studio
 
-DeepSense is an interactive **Streamlit app + Python toolkit** for generating synthetic tabular data, profiling it, and validating quality in one place.
-
-It is designed for portfolio demos, ML experimentation, and rapid prototyping where you need realistic-enough data structures without using production data.
+The app is an interactive **Streamlit app + Python toolkit** for generating synthetic tabular data, profiling it, and validating quality in one place.
 
 ---
 
-## Why DeepSense exists
+## What is it good for?
 
-Most synthetic data demos stop at “generate a CSV.” DeepSense focuses on a fuller workflow:
+Most synthetic data demos stop at “generate a CSV.” This app focuses on a fuller workflow:
 
 - Generate multiple domain datasets.
 - Tune generation behavior with configurable controls.
@@ -22,7 +20,7 @@ Most synthetic data demos stop at “generate a CSV.” DeepSense focuses on a f
 
 ### 1) Multiple dataset blueprints
 
-DeepSense currently supports three synthetic domains:
+App currently supports three synthetic domains:
 
 - **Customer Churn** (classification-style behavioral dataset)
 - **Retail Sales** (transaction/time-series flavored dataset)
@@ -36,7 +34,7 @@ Each dataset has:
 
 ### 2) Two generation strategies per dataset
 
-For each dataset type, DeepSense supports:
+For each dataset type, app supports:
 
 - **`rule_based`** generation
 - **`distribution_based`** generation
@@ -64,7 +62,7 @@ Built-in exploratory analysis includes:
 
 ### 5) Quality and validation layer
 
-DeepSense includes a dedicated quality workflow:
+App includes a dedicated quality workflow:
 
 - **Schema/range checks** per dataset
 - **Allowed category checks** for categorical fields
@@ -261,7 +259,7 @@ Key tunable parameters:
 
 ## Quality checks and constraints
 
-DeepSense ships with built-in constraints by dataset, including:
+App ships with built-in constraints by dataset, including:
 
 - Churn constraints such as `tenure_months` range and allowed contract/payment categories.
 - Retail constraints such as `discount_pct` in `[0, 100]` and non-negative `revenue`.
@@ -276,7 +274,7 @@ Quality summary in the app reports:
 
 ## Python API usage
 
-You can use DeepSense directly as a Python library.
+You can use the app directly as a Python library.
 
 ### Generate a dataset
 
@@ -370,9 +368,7 @@ Current tests verify:
 
 ---
 
-## Potential extensions
-
-If you want to evolve this project further:
+## What i would add given more time
 
 - Add domain-specific constraint packs and custom validation rules.
 - Add drift benchmarking against a real reference dataset.
@@ -382,6 +378,3 @@ If you want to evolve this project further:
 
 ---
 
-## License
-
-Add a project license (e.g., MIT) if you plan to distribute or reuse this repository broadly.
